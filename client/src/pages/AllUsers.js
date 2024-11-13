@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import SummaryApi from '../common';
-import { collapseToast, toast } from 'react-toastify';
+import { toast } from 'react-toastify';
 import moment from 'moment';
 import { MdModeEdit, MdDelete } from "react-icons/md";
 import { FaRegCircleUser } from 'react-icons/fa6';
+import EmployeeForm from './Employees'; // Import the EmployeeForm component
 
 const AllUsers = () => {
   const [allUsers, setAllUsers] = useState([]);
@@ -13,9 +14,10 @@ const AllUsers = () => {
     mobile: "",
     gender: "",
     course: "",
-    image: "",
+    profilePic: "",
   });
   const [isEditing, setIsEditing] = useState(false);
+  const [showForm, setShowForm] = useState(false); // State to toggle form visibility
 
   const fetchAllUsers = async () => {
     try {
@@ -50,7 +52,7 @@ const AllUsers = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const apiEndpoint = isEditing ? `/update/${formData._id}` : "/create";
+    const apiEndpoint = isEditing ? `${SummaryApi.updateEmployee.url}/${formData._id}` : SummaryApi.addEmployee.url;
     const method = isEditing ? "PUT" : "POST";
 
     try {
@@ -60,8 +62,9 @@ const AllUsers = () => {
           "Content-Type": "application/json",
         },
         body: JSON.stringify(formData),
+        
       });
-
+console.log(apiEndpoint)
       const dataResponse = await response.json();
 
       if (dataResponse.success) {
@@ -71,9 +74,10 @@ const AllUsers = () => {
           mobile: "",
           gender: "",
           course: "",
-          image: "",
+          profilePic: "",
         });
         setIsEditing(false);
+        setShowForm(false); // Hide form after submission
         await fetchAllUsers();
         toast.success(dataResponse.message);
       } else {
@@ -87,19 +91,20 @@ const AllUsers = () => {
   const handleEdit = (user) => {
     setFormData(user);
     setIsEditing(true);
+    setShowForm(true); // Show form when editing
   };
 
   const handleDelete = async (id) => {
-    console.log(id)
     try {
-      const response = await fetch(`/delete/${id}`, {
-        method: "DELETE",
+      const response = await fetch(`${SummaryApi.deleteEmployee.url.replace(':id', id)}`, {
+        method: SummaryApi.deleteEmployee.method,
       });
       const dataResponse = await response.json();
-       console.log(dataResponse)
-      if (dataResponse.data.success) {
+
+      if (dataResponse.success) {
         await fetchAllUsers();
         toast.success(dataResponse.message);
+        
       } else {
         toast.error(dataResponse.message);
       }
@@ -115,86 +120,90 @@ const AllUsers = () => {
           <h1 className="text-2xl font-bold">User Management</h1>
           <button
             className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700"
-            onClick={() => setIsEditing(false)}
+            onClick={() => {
+              setIsEditing(false);
+              setShowForm(true); // Show form when creating a new user
+            }}
           >
             Create User
           </button>
         </div>
 
-        {/* <UserForm
-          handleSubmit={handleSubmit}
-          handleOnChange={handleOnChange}
-          formData={formData}
-          isEditing={isEditing}
-        /> */}
-
-        <table className="w-full userTable">
-          <thead>
-            <tr className="bg-black text-white">
-              <th>Unique id.</th>
-              <th>Image</th>
-              <th>Name</th>
-              <th>Email</th>
-              <th>Mobile</th>
-              <th>Designation</th>
-              <th>Gender</th>
-              <th>Course</th>
-              <th>Created Date</th>
-              <th>Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {allUsers.length > 0 ? (
-              allUsers.map((user, index) => (
-                <tr className='text-center' key={user._id}>
-                  <td>{index + 1}</td>
-                  <td>
-                    {user?._id && (
-                      <div className='text-3xl cursor-pointer relative flex justify-center'>
-                        {user?.profilePic ? (
-                          <img
-                            src={user?.profilePic}
-                            className='w-10 h-10 rounded-full'
-                            alt={user?.name}
-                          />
-                        ) : (
-                          <FaRegCircleUser />
-                        )}
-                      </div>
-                    )}
-                  </td>
-                  <td>{user.name}</td>
-                  <td>{user.email}</td>
-                  <td>{user.mobile}</td>
-                  <td>{user.designation}</td>
-                  <td>{user.gender}</td>
-                  <td>{user.course}</td>
-                  <td>{moment(user.createdAt).format('LL')}</td>
-                  <td>
-                    <button
-                      className="bg-yellow-500 text-white p-2 rounded-full hover:bg-yellow-600 mx-1"
-                      onClick={() => handleEdit(user)}
-                    >
-                      <MdModeEdit />
-                    </button>
-                    <button
-                      className="bg-red-500 text-white p-2 rounded-full hover:bg-red-600 mx-1"
-                      onClick={() => handleDelete(user._id)}
-                    >
-                      <MdDelete />
-                    </button>
-                    
-                  </td>
-                </tr>
-              ))
-            ) : (
-              <tr>
-                <td colSpan="10">No data available</td>
+        {showForm ? (
+          <EmployeeForm
+            handleSubmit={handleSubmit}
+            handleOnChange={handleOnChange}
+            formData={formData}
+            isEditing={isEditing}
+            setShowForm={setShowForm} // Pass setShowForm to close form
+          />
+        ) : (
+          <table className="w-full userTable">
+            <thead>
+              <tr className="bg-black text-white">
+                <th>Unique id.</th>
+                <th>Image</th>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Mobile</th>
+                <th>Designation</th>
+                <th>Gender</th>
+                <th>Course</th>
+                <th>Created Date</th>
+                <th>Action</th>
               </tr>
-            )}
-          </tbody>
-        </table>
-
+            </thead>
+            <tbody>
+              {allUsers.length > 0 ? (
+                allUsers.map((user, index) => (
+                  <tr className='text-center' key={user._id}>
+                    <td>{index + 1}</td>
+                    <td>
+                      {user?._id && (
+                        <div className='text-3xl cursor-pointer relative flex justify-center'>
+                          {user?.profilePic ? (
+                            <img
+                              src={user?.profilePic}
+                              className='w-10 h-10 rounded-full'
+                              alt={user?.name}
+                            />
+                          ) : (
+                            <FaRegCircleUser />
+                          )}
+                        </div>
+                      )}
+                    </td>
+                    <td>{user.name}</td>
+                    <td>{user.email}</td>
+                    <td>{user.mobile}</td>
+                    <td>{user.designation}</td>
+                    <td>{user.gender}</td>
+                    <td>{user.course}</td>
+                    <td>{moment(user.createdAt).format('LL')}</td>
+                    <td>
+                      <button
+                        className="bg-yellow-500 text-white p-2 rounded-full hover:bg-yellow-600 mx-1"
+                        onClick={() => handleEdit(user)}
+                      >
+                        <MdModeEdit />
+                      </button>
+                      <button
+                        className="bg-red-500 text-white p-2 rounded-full hover:bg-red-600 mx-1"
+                        onClick={() => handleDelete(user._id)}
+                      >
+                        <MdDelete />
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan="10">No data available</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        )}
       </div>
     </div>
   );
